@@ -1,0 +1,43 @@
+import telebot
+import random
+
+# توکن ربات را جایگزین کن
+TOKEN = "7703694453:AAH6oEJEj4KJwvWj2IqJ7sRmMUnuu2JHyek"
+bot = telebot.TeleBot(TOKEN)
+
+# ذخیره وضعیت کاربران (عدد انتخاب شده و تعداد تلاش‌ها)
+users = {}
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "سلام! 🎯 من یک عدد بین ۱ تا ۱۰۰ انتخاب کردم. حدس بزن ببین چی انتخاب کردم! عدد رو برام بفرست.")
+
+    # ایجاد عدد تصادفی برای کاربر
+    users[message.chat.id] = {
+        "target": random.randint(1, 100),
+        "attempts": 0
+    }
+
+@bot.message_handler(func=lambda message: message.text.isdigit())
+def guess_number(message):
+    user_id = message.chat.id
+
+    if user_id not in users:
+        bot.reply_to(message, "لطفاً با ارسال دستور /start یک بازی جدید شروع کن!")
+        return
+    
+    guess = int(message.text)
+    users[user_id]["attempts"] += 1
+    target = users[user_id]["target"]
+
+    if guess < target:
+        bot.reply_to(message, "🔼 عدد بزرگ‌تره! دوباره حدس بزن.")
+    elif guess > target:
+        bot.reply_to(message, "🔽 عدد کوچک‌تره! دوباره حدس بزن.")
+    else:
+        attempts = users[user_id]["attempts"]
+        bot.reply_to(message, f"🎉 آفرین! عدد {target} رو در {attempts} تلاش حدس زدی! برای بازی جدید /start رو بفرست.")
+        del users[user_id]  # حذف کاربر از لیست تا بازی جدید بتواند شروع شود.
+
+# اجرای ربات
+bot.polling()
