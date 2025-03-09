@@ -2,7 +2,7 @@ import telebot
 import random
 
 # توکن ربات را جایگزین کن
-TOKEN = "7703694453:AAH6oEJEj4KJwvWj2IqJ7sRmMUnuu2JHyek"
+TOKEN = "7703694453:AAFPXNNEdVeS41zl81FRut_qEP6VoSGVrCU"
 bot = telebot.TeleBot(TOKEN)
 
 # ذخیره وضعیت کاربران (عدد انتخاب شده و تعداد تلاش‌ها)
