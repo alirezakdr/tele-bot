@@ -3,8 +3,8 @@ import sqlite3
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
 # تنظیمات اولیه ربات
-TOKEN = "7942465787:AAGsJyyjXL_b6WXI9aQOobOwjqChi4C9GZA"
-ADMIN_ID = "alirezaakdr"
+TOKEN = "YOUR_BOT_TOKEN"
+ADMIN_ID = "YOUR_ADMIN_ID"
 bot = telebot.TeleBot(TOKEN)
 
 # اتصال به دیتابیس و ایجاد جدول کاربران
@@ -88,6 +88,22 @@ def find_customer(message):
         bot.send_message(message.chat.id, response)
     else:
         bot.send_message(message.chat.id, "❌ هیچ مشتری با این اطلاعات یافت نشد!")
+
+# سیستم مشاوره - دریافت سوال از مشتری و ارسال به ادمین
+@bot.message_handler(commands=['consult'])
+def ask_question(message):
+    bot.send_message(message.chat.id, "💬 لطفاً سوال خود را ارسال کنید:")
+    bot.register_next_step_handler(message, send_question_to_admin)
+
+def send_question_to_admin(message):
+    user_id = message.chat.id
+    question = message.text
+    cursor.execute("SELECT phone FROM customers WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+    phone_number = user_data[0] if user_data else "نامشخص"
+    
+    bot.send_message(ADMIN_ID, f"📩 سوال جدید از مشتری:\n📞 شماره: {phone_number}\n❓ سوال: {question}")
+    bot.send_message(user_id, "✅ سوال شما برای مشاورین ارسال شد. به زودی با شما تماس گرفته خواهد شد.")
 
 # اجرای ربات
 bot.polling(none_stop=True)
