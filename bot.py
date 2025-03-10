@@ -1,130 +1,120 @@
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-import os
 import json
 
+# تنظیمات توکن و آیدی ادمین
 TOKEN = "7942465787:AAE60cConPpMZB9YfGbN7LAr5SRVOk68IyY"
 ADMIN_ID = 1149251141
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://your-render-url/webhook")
-
 bot = telebot.TeleBot(TOKEN)
 
-# Load or initialize customer data
-def load_data():
-    if not os.path.exists("customers.json"):
-        with open("customers.json", "w") as f:
-            json.dump({}, f)
+# بارگذاری اطلاعات مشتریان و محصولات از فایل JSON
+try:
     with open("customers.json", "r") as f:
-        return json.load(f)
+        customers = json.load(f)
+except:
+    customers = {}
 
-def save_data(data):
-    with open("customers.json", "w") as f:
-        json.dump(data, f)
-
-data = load_data()
-
-# Load or initialize product data
-def load_products():
-    if not os.path.exists("products.json"):
-        with open("products.json", "w") as f:
-            json.dump({}, f)
+try:
     with open("products.json", "r") as f:
-        return json.load(f)
+        products = json.load(f)
+except:
+    products = {}
 
-def save_products(products):
-    with open("products.json", "w") as f:
-        json.dump(products, f)
+# منوی اصلی
+main_menu = ReplyKeyboardMarkup(resize_keyboard=True)
+main_menu.add(KeyboardButton("📌 ثبت اطلاعات"), KeyboardButton("🛍 محصولات"))
+main_menu.add(KeyboardButton("📄 دریافت کاتالوگ"), KeyboardButton("☎ مشاوره"))
 
-products = load_products()
+# ثبت اطلاعات مشتری
+def save_customer(user_id, name, phone, location, job):
+    customers[user_id] = {"name": name, "phone": phone, "location": location, "job": job}
+    with open("customers.json", "w") as f:
+        json.dump(customers, f)
 
-# Main menu
-def main_menu():
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    buttons = [
-        KeyboardButton("📋 ثبت نام مشتری"),
-        KeyboardButton("📞 مشاوره"),
-        KeyboardButton("📂 کاتالوگ"),
-        KeyboardButton("🛍 محصولات"),
-        KeyboardButton("📅 برنامه‌های آینده")
-    ]
-    markup.add(*buttons)
-    return markup
-
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=["start"])
 def send_welcome(message):
-    bot.send_message(message.chat.id, "👋 خوش آمدید! لطفاً از منوی زیر استفاده کنید.", reply_markup=main_menu())
+    bot.send_message(message.chat.id, "👋 خوش آمدید! لطفاً از منوی زیر انتخاب کنید.", reply_markup=main_menu)
 
-@bot.message_handler(func=lambda message: message.text == "📋 ثبت نام مشتری")
-def register_customer(message):
-    bot.send_message(message.chat.id, "لطفاً نام خود را وارد کنید:")
-    bot.register_next_step_handler(message, process_name)
+@bot.message_handler(func=lambda message: message.text == "📌 ثبت اطلاعات")
+def register_user(message):
+    bot.send_message(message.chat.id, "👤 لطفاً نام خود را ارسال کنید.")
+    bot.register_next_step_handler(message, get_name)
 
-def process_name(message):
+def get_name(message):
     user_id = message.chat.id
-    data[user_id] = {"name": message.text}
-    bot.send_message(message.chat.id, "شماره تلفن خود را وارد کنید:")
-    bot.register_next_step_handler(message, process_phone)
+    customers[user_id] = {"name": message.text}
+    bot.send_message(message.chat.id, "📞 لطفاً شماره همراه خود را ارسال کنید.")
+    bot.register_next_step_handler(message, get_phone)
 
-def process_phone(message):
+def get_phone(message):
     user_id = message.chat.id
-    data[user_id]["phone"] = message.text
-    bot.send_message(message.chat.id, "محدوده فعالیت خود را وارد کنید:")
-    bot.register_next_step_handler(message, process_location)
+    customers[user_id]["phone"] = message.text
+    bot.send_message(message.chat.id, "📍 لطفاً محدوده فعالیت خود را ارسال کنید.")
+    bot.register_next_step_handler(message, get_location)
 
-def process_location(message):
+def get_location(message):
     user_id = message.chat.id
-    data[user_id]["location"] = message.text
-    bot.send_message(message.chat.id, "عنوان شغلی خود را وارد کنید:")
-    bot.register_next_step_handler(message, process_job)
+    customers[user_id]["location"] = message.text
+    bot.send_message(message.chat.id, "💼 لطفاً عنوان شغلی خود را ارسال کنید.")
+    bot.register_next_step_handler(message, get_job)
 
-def process_job(message):
+def get_job(message):
     user_id = message.chat.id
-    data[user_id]["job_title"] = message.text
-    save_data(data)
-    bot.send_message(message.chat.id, "✅ ثبت نام شما انجام شد!", reply_markup=main_menu())
+    customers[user_id]["job"] = message.text
+    save_customer(user_id, customers[user_id]["name"], customers[user_id]["phone"], customers[user_id]["location"], customers[user_id]["job"])
+    bot.send_message(message.chat.id, "✅ اطلاعات شما با موفقیت ثبت شد!", reply_markup=main_menu)
 
-@bot.message_handler(func=lambda message: message.text == "📞 مشاوره")
-def consultation(message):
-    bot.send_message(message.chat.id, "لطفاً سوال خود را ارسال کنید:")
-    bot.register_next_step_handler(message, forward_question)
-
-def forward_question(message):
-    bot.send_message(ADMIN_ID, f"📩 سوال جدید از {message.chat.id}\n\n❓ {message.text}")
-    bot.send_message(message.chat.id, "✅ سوال شما ارسال شد، به زودی پاسخ داده خواهد شد.")
-
-@bot.message_handler(func=lambda message: message.text == "📂 کاتالوگ")
+# ارسال کاتالوگ
+@bot.message_handler(func=lambda message: message.text == "📄 دریافت کاتالوگ")
 def send_catalog(message):
     with open("catalog.pdf", "rb") as catalog:
         bot.send_document(message.chat.id, catalog)
 
-@bot.message_handler(func=lambda message: message.text == "🛍 محصولات")
-def product_menu(message):
+# دریافت مشاوره
+@bot.message_handler(func=lambda message: message.text == "☎ مشاوره")
+def ask_consultation(message):
+    bot.send_message(message.chat.id, "💬 لطفاً سوال خود را ارسال کنید.")
+    bot.register_next_step_handler(message, forward_question)
+
+def forward_question(message):
+    bot.send_message(ADMIN_ID, f"❓ سوال جدید از {message.chat.id}\n\n📝 سوال: {message.text}\n📞 شماره: {customers.get(message.chat.id, {}).get('phone', 'نامشخص')}")
+    bot.send_message(message.chat.id, "✅ سوال شما ثبت شد، به زودی با شما تماس گرفته خواهد شد!", reply_markup=main_menu)
+
+# مدیریت محصولات توسط ادمین
+@bot.message_handler(func=lambda message: message.chat.id == ADMIN_ID and message.text == "🛍 مدیریت محصولات")
+def manage_products(message):
     markup = InlineKeyboardMarkup()
-    for product_name in products.keys():
-        markup.add(InlineKeyboardButton(product_name, callback_data=f"product_{product_name}"))
-    bot.send_message(message.chat.id, "🔹 لطفاً یک محصول را انتخاب کنید:", reply_markup=markup)
+    markup.add(InlineKeyboardButton("➕ افزودن محصول", callback_data="add_product"))
+    markup.add(InlineKeyboardButton("❌ حذف محصول", callback_data="remove_product"))
+    bot.send_message(ADMIN_ID, "🔧 مدیریت محصولات:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "add_product")
+def add_product(call):
+    bot.send_message(ADMIN_ID, "🛒 لطفاً نام محصول را ارسال کنید.")
+    bot.register_next_step_handler(call.message, get_product_name)
+
+def get_product_name(message):
+    products[message.text] = {"description": "", "video": ""}
+    with open("products.json", "w") as f:
+        json.dump(products, f)
+    bot.send_message(ADMIN_ID, "✅ محصول اضافه شد!")
+
+# نمایش محصولات به مشتریان
+@bot.message_handler(func=lambda message: message.text == "🛍 محصولات")
+def show_products(message):
+    if not products:
+        bot.send_message(message.chat.id, "🚫 محصولی یافت نشد!")
+        return
+    markup = InlineKeyboardMarkup()
+    for product in products:
+        markup.add(InlineKeyboardButton(product, callback_data=f"product_{product}"))
+    bot.send_message(message.chat.id, "📌 لطفاً محصول مورد نظر را انتخاب کنید:", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("product_"))
-def send_product_info(call):
+def show_product_details(call):
     product_name = call.data.replace("product_", "")
-    product_info = products.get(product_name, "اطلاعاتی موجود نیست.")
-    bot.send_message(call.message.chat.id, f"🛍 {product_name}\n\n{product_info}")
+    details = products.get(product_name, {})
+    bot.send_message(call.message.chat.id, f"🛍 محصول: {product_name}\n📜 توضیحات: {details.get('description', 'ندارد')}\n🎥 ویدیو: {details.get('video', 'ندارد')}")
 
-@bot.message_handler(func=lambda message: message.text == "📅 برنامه‌های آینده")
-def upcoming_events(message):
-    bot.send_message(message.chat.id, "📅 برنامه‌های آینده به زودی اعلام خواهد شد!")
-
-if __name__ == "__main__":
-    import flask
-    app = flask.Flask(__name__)
-
-    @app.route(f"/webhook", methods=["POST"])
-    def webhook():
-        json_str = flask.request.get_data().decode("UTF-8")
-        update = telebot.types.Update.de_json(json_str)
-        bot.process_new_updates([update])
-        return "", 200
-
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    app.run(host="0.0.0.0", port=5000)
+print("🚀 Bot is running...")
+bot.polling(none_stop=True)
