@@ -3,8 +3,8 @@ import sqlite3
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
 # تنظیمات اولیه ربات
-TOKEN = "YOUR_BOT_TOKEN"
-ADMIN_ID = "YOUR_ADMIN_ID"
+TOKEN = "7942465787:AAGsJyyjXL_b6WXI9aQOobOwjqChi4C9GZA"
+ADMIN_ID = "alirezaakdr"
 bot = telebot.TeleBot(TOKEN)
 
 # اتصال به دیتابیس و ایجاد جدول کاربران
