@@ -4,7 +4,7 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
 # تنظیمات اولیه ربات
 TOKEN = "7942465787:AAGsJyyjXL_b6WXI9aQOobOwjqChi4C9GZA"
-ADMIN_ID = "alirezaakdr"
+ADMIN_ID = "1149251141"
 bot = telebot.TeleBot(TOKEN)
 
 # اتصال به دیتابیس و ایجاد جدول کاربران
