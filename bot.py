@@ -1,11 +1,17 @@
 import telebot
 import sqlite3
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+import os
+from flask import Flask, request
 
 # تنظیمات توکن و ادمین
-TOKEN = "7942465787:AAE60cConPpMZB9YfGbN7LAr5SRVOk68IyY"
-ADMIN_ID = "1149251141"
+TOKEN = os.getenv("7942465787:AAE60cConPpMZB9YfGbN7LAr5SRVOk68IyY")  # گرفتن توکن از محیط متغیرها در Render
+ADMIN_ID = os.getenv("1149251141")
 bot = telebot.TeleBot(TOKEN)
+
+# تنظیمات Webhook
+WEBHOOK_URL = os.getenv("https://tele-bot-c2vq.onrender.com") + "/webhook"
+
+app = Flask(__name__)
 
 # اتصال به دیتابیس
 conn = sqlite3.connect("remedy_bot.db", check_same_thread=False)
@@ -44,15 +50,10 @@ conn.commit()
 
 # تابع برای نمایش منوی اصلی
 def show_main_menu(chat_id):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = KeyboardButton("📦 محصولات")
-    btn2 = KeyboardButton("📖 دریافت دستورالعمل")
-    btn3 = KeyboardButton("💬 مشاوره رایگان")
-    btn4 = KeyboardButton("📄 دریافت کاتالوگ")
-    btn5 = KeyboardButton("ℹ️ درباره ما")
-    markup.add(btn1, btn2)
-    markup.add(btn3, btn4)
-    markup.add(btn5)
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("📦 محصولات", "📖 دریافت دستورالعمل")
+    markup.row("💬 مشاوره رایگان", "📄 دریافت کاتالوگ")
+    markup.row("ℹ️ درباره ما")
     bot.send_message(chat_id, "🏠 **به منوی اصلی خوش آمدید! لطفاً یک گزینه را انتخاب کنید:**", reply_markup=markup, parse_mode="Markdown")
 
 # ثبت اطلاعات مشتریان
@@ -79,7 +80,17 @@ def save_customer(message, name):
     bot.send_message(message.chat.id, "✅ اطلاعات شما ذخیره شد!")
     show_main_menu(message.chat.id)
 
-# ارسال سوال به ادمین
+# پردازش دکمه‌های منو
+@bot.message_handler(func=lambda message: message.text == "📦 محصولات")
+def show_products(message):
+    bot.send_message(message.chat.id, "📦 لطفاً نام محصول موردنظر خود را وارد کنید:")
+    bot.register_next_step_handler(message, get_instruction_step2)
+
+@bot.message_handler(func=lambda message: message.text == "📖 دریافت دستورالعمل")
+def get_instruction(message):
+    bot.send_message(message.chat.id, "🔍 لطفاً نام محصول را وارد کنید:")
+    bot.register_next_step_handler(message, get_instruction_step2)
+
 @bot.message_handler(func=lambda message: message.text == "💬 مشاوره رایگان")
 def consultation(message):
     bot.send_message(message.chat.id, "💬 لطفاً سوال خود را ارسال کنید:")
@@ -94,17 +105,14 @@ def send_question_to_admin(message):
     bot.send_message(ADMIN_ID, f"📩 سوال جدید:\n📞 شماره: {phone_number}\n❓ سوال: {question}")
     bot.send_message(user_id, "✅ سوال شما برای مشاورین ارسال شد.")
 
-# ارسال کاتالوگ
 @bot.message_handler(func=lambda message: message.text == "📄 دریافت کاتالوگ")
 def send_catalog(message):
     with open("catalog.pdf", "rb") as catalog:
         bot.send_document(message.chat.id, catalog, caption="📄 کاتالوگ محصولات ما را مشاهده کنید.")
 
-# مدیریت محصولات و دستورالعمل‌ها
-@bot.message_handler(func=lambda message: message.text == "📖 دریافت دستورالعمل")
-def get_instruction(message):
-    bot.send_message(message.chat.id, "🔍 لطفاً نام محصول را وارد کنید:")
-    bot.register_next_step_handler(message, get_instruction_step2)
+@bot.message_handler(func=lambda message: message.text == "ℹ️ درباره ما")
+def about_us(message):
+    bot.send_message(message.chat.id, "🏢 **ریمَدی - پیشرو در مراقبت از مو!**\n📌 بیش از ۸ سال تجربه در تولید محصولات کراتین و احیا.\n📞 تماس: +98XXXXXXXXXX\n🌐 وب‌سایت: https://remedy.com", parse_mode="Markdown")
 
 def get_instruction_step2(message):
     product_name = message.text
@@ -119,4 +127,13 @@ def get_instruction_step2(message):
     if video_url:
         bot.send_message(message.chat.id, f"🎥 ویدیوی نمونه‌کار:\n{video_url}")
 
-bot.infinity_polling()
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    json_data = request.get_json()
+    bot.process_new_updates([telebot.types.Update.de_json(json_data)])
+    return "", 200
+
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
