@@ -1,1 +1,5 @@
 pyTelegramBotAPI==4.15.4
+flask
+telebot
+sqlite3
+gunicorn
